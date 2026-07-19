@@ -68,17 +68,17 @@ pub fn success(subsystem: impl AsRef<str>, msg: impl AsRef<str>) {
     print_c(OK, subsystem, msg);
 }
 
-/// warning log using [print_c]
+#[allow(dead_code)]
 pub fn warn(subsystem: impl AsRef<str>, msg: impl AsRef<str>) {
     print_c(WARN, subsystem, msg);
 }
 
-/// error log using [print_c]
+#[allow(dead_code)]
 pub fn error(subsystem: impl AsRef<str>, msg: impl AsRef<str>) {
     print_c(ERROR, subsystem, msg);
 }
 
-/// debug log using [print_c]
+#[allow(dead_code)]
 pub fn debug(subsystem: impl AsRef<str>, msg: impl AsRef<str>) {
     print_c(DEBUG, subsystem, msg);
 }

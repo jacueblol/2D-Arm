@@ -1,0 +1,47 @@
+# 3D Arm Simulator — runtime configuration
+# Edit this file and restart; no recompile needed.
+
+[sim]
+initial_target = [1.2, 0.8, 0.4]   # metres [x, y, z]
+
+# Shared motor model (all joints use the same geared-servo parameters).
+[motor]
+resistance_ohm    = 2.0   # R  — winding resistance
+kt_nm_per_amp     = 8.0   # Kt — torque constant (gearbox-multiplied)
+kv_v_per_rads     = 8.0   # Kv — back-EMF constant (caps max joint speed ~1.45 rad/s)
+inertia_kg_m2     = 5.0   # J  — effective inertia with arm load
+damping_nm_s_rad  = 1.0   # b  — gearbox viscous damping
+
+[pan]
+# Rotates the whole arm horizontally; no gravity torque on this axis.
+link_length_m   = 0.0
+link_mass_kg    = 0.0
+kp = 8.0
+ki = 0.1
+kd = 0.5
+max_vel_rads    = 1.5
+max_accel_rads2 = 3.0
+min_angle_deg   = -180.0
+max_angle_deg   =  180.0
+
+[shoulder]
+link_length_m   = 1.0
+link_mass_kg    = 0.3
+kp = 10.0
+ki = 0.2
+kd = 1.0
+max_vel_rads    = 1.0
+max_accel_rads2 = 2.0
+min_angle_deg   = -30.0
+max_angle_deg   = 135.0
+
+[elbow]
+link_length_m   = 0.8
+link_mass_kg    = 0.15
+kp = 10.0
+ki = 0.2
+kd = 1.0
+max_vel_rads    = 1.2
+max_accel_rads2 = 2.5
+min_angle_deg   = -150.0
+max_angle_deg   =  10.0

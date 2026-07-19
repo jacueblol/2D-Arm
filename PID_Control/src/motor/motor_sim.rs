@@ -1,38 +1,47 @@
-use crate::{constants, motor::motor_io::{MotorFn, MotorIO, MotorLogSample}};
+use crate::motor::motor_io::{MotorFn, MotorIO, MotorLogSample};
+
+const MAX_VOLTAGE: f64 = 12.0;
 
 
+
+pub struct MotorParams {
+    pub r:  f64,   // Ω       winding resistance
+    pub kt: f64,   // Nm/A    torque constant
+    pub kv: f64,   // V·s/rad back-EMF constant
+    pub j:  f64,   // kg·m²   effective inertia
+    pub b:  f64,   // Nm·s/rad viscous damping
+}
+
+impl Default for MotorParams {
+    fn default() -> Self {
+        // Geared servo: max ~1.45 rad/s, ~48 Nm stall, overdamped at Kp=10.
+        Self { r: 2.0, kt: 8.0, kv: 8.0, j: 5.0, b: 1.0 }
+    }
+}
 
 pub struct MotorSim {
     motor_io: MotorIO,
-    r: f64, // resistance constant
-    kt: f64, // torque constant
-    kv: f64, // back EMF constant
-
-    j: f64, // inertia
-    b: f64, // viscous friction
+    r: f64,
+    kt: f64,
+    kv: f64,
+    j: f64,
+    b: f64,
     load_torque: f64,
 }
 
-
 impl MotorSim {
-    pub fn new() -> Self {
-        Self { 
-            motor_io: MotorIO::new(), 
-            r: 0.5, 
-            kt: 0.02, 
-            kv: 0.02, 
-            j: 0.0005, 
-            b: 0.0001,
+    #[allow(dead_code)]
+    pub fn new() -> Self { Self::with_params(MotorParams::default()) }
 
-            load_torque: 0.0,
-        }
+    pub fn with_params(p: MotorParams) -> Self {
+        Self { motor_io: MotorIO::new(), r: p.r, kt: p.kt, kv: p.kv, j: p.j, b: p.b, load_torque: 0.0 }
     }
 }
 
 // General motor implimentation 
 impl MotorFn for MotorSim {
     fn set_voltage(&mut self, volts:f64) {
-        self.motor_io.input_voltage = volts.clamp(-constants::MAX_VOLTAGE, constants::MAX_VOLTAGE);
+        self.motor_io.input_voltage = volts.clamp(-MAX_VOLTAGE, MAX_VOLTAGE);
     }
 
     fn reset(&mut self) {
@@ -51,14 +60,19 @@ impl MotorFn for MotorSim {
     }
 }
 
-// Simulated specific implimaintation
+#[allow(dead_code)]
 impl MotorSim {
-
-    fn set_load_torque(&mut self, load: f64) {
+    pub fn set_load_torque(&mut self, load: f64) {
         self.load_torque = load;
     }
 
-    fn step(&mut self, dt: f64) {
+    /// Feedforward voltage to pre-load against the current load torque (gravity).
+    /// V_ff = τ_load × R / Kt  — produces exactly the current needed to hold the load.
+    pub fn gravity_feedforward_volts(&self) -> f64 {
+        self.load_torque * self.r / self.kt
+    }
+
+    pub fn step(&mut self, dt: f64) {
         if dt <= 0.0 {
             return;
         }

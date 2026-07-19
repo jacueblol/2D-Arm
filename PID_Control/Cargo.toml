@@ -4,5 +4,10 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+bevy = "0.15"
+bevy_egui = "0.31"
+egui_plot = "0.29"
 colored = "3.0.0"
-plotters = "0.3.7"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+toml = "0.8"
