@@ -5,6 +5,7 @@ use arm_core::arm::Arm;
 use bevy::log::info;
 use bevy::prelude::*;
 use bevy::window::WindowResolution;
+use bevy_egui::EguiPlugin;
 use glam::DVec3;
 
 use sim::{SimPlugin, SimState};
@@ -39,6 +40,7 @@ fn main() {
             }),
             ..default()
         }))
+        .add_plugins(EguiPlugin::default())
         .insert_resource(SimState::new(arm, initial_target, reached))
         .add_plugins(SimPlugin)
         .run();

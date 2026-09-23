@@ -1,16 +1,20 @@
 use bevy::prelude::*;
+use bevy_egui::EguiPrimaryContextPass;
 
 use super::camera::handle_camera;
 use super::gizmos::draw_gizmos;
 use super::input::handle_keyboard;
 use super::resources::{OrbitCam, SimState, TRAIL_LEN};
 use super::scene::{setup, update_status, update_visuals};
+use super::ui::{PlotHistory, UiState, draw_panel, setup_egui_theme, update_plot_history};
 
 pub struct SimPlugin;
 
 impl Plugin for SimPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<OrbitCam>()
+            .init_resource::<PlotHistory>()
+            .init_resource::<UiState>()
             .add_systems(Startup, setup)
             .add_systems(
                 Update,
@@ -19,11 +23,16 @@ impl Plugin for SimPlugin {
                     handle_camera,
                     step_sim,
                     run_choreography,
+                    update_plot_history,
                     update_visuals,
                     draw_gizmos,
                     update_status,
                 )
                     .chain(),
+            )
+            .add_systems(
+                EguiPrimaryContextPass,
+                (setup_egui_theme, draw_panel).chain(),
             );
     }
 }
