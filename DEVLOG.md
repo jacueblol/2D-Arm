@@ -5,6 +5,43 @@ successor to the old project's `PROGRESS.md`, which stays on `main` as the
 historical record of the pre-rewrite prototype rather than being carried
 forward as live state.
 
+## M3 — Joint, config-driven (2026-09-22)
+
+**What and why.** `arm_core::arm::Joint` wires a motor, a PID controller, a
+trapezoidal motion profile, and joint limits together — this is what a
+config file's `[shoulder]`/`[elbow]`/`[pan]` section turns into. Ported
+straight from the old `Joint3d`, renamed (the "3d" suffix was doing no work
+— nothing here is 2D vs 3D specific, it's just "one joint's control loop"),
+plus:
+
+- **`arm_core::config`** is new: the same `Config`/`JointCfg`/`MotorCfg`
+  schema the old `main.rs` had inlined, now shared between `arm_core`'s own
+  tests and (once M6 wires up the Bevy app) `arm_sim` — one schema, one
+  `config.toml` (now at the repo root), so they can't drift apart the way a
+  test helper hand-copying config values could. `JointCfg::build()` now also
+  applies M2's anti-windup: the joint's PID output is bounded to
+  `motor::MAX_VOLTAGE` (±12V), since command past that can never reach the
+  motor anyway — this is where the M2 work actually gets used for the first
+  time.
+- The angle-wrap math (re-express a target as the nearest angle congruent
+  to it, mod a full turn, so a PID error always takes the short way around
+  the circle) is now a standalone free function,
+  `nearest_congruent_angle`, with its own fast unit tests — it was inline
+  logic duplicated at three call sites in the old `Joint3d`.
+- `crates/arm_core/tests/config_driven.rs`: integration tests that call
+  `Config::embedded_default()` and build real joints from it, rather than
+  hand-duplicating gains/limits like the old `arm3d.rs` test helper did.
+  One of these caught a real thing worth knowing: the shoulder's configured
+  gains (kp=10, ki=0.8, kd=1.0) overshoot to ~47° on a 45° command before
+  settling with a long decaying tail — checked empirically (logged the
+  trajectory out to 38 simulated seconds) before picking a settle-time bound
+  for the test, rather than guessing a tolerance and loosening it until
+  green.
+
+**What's next.** M4: closed-form forward/inverse kinematics — the
+quaternion-chain FK and the 2-link IK — with the elbow-up solution finally
+surfaced as a real, selectable option instead of dead code.
+
 ## M2 — PID with anti-windup (2026-09-22)
 
 **What and why.** The old `PidController` was the simplest possible PID: no

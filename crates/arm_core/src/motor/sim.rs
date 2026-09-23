@@ -1,7 +1,11 @@
 use super::encoder::EncoderConfig;
 use super::friction::Stiction;
 
-const MAX_VOLTAGE: f64 = 12.0;
+/// Motor supply voltage limit, V. `MotorSim::set_voltage` clamps to this, and
+/// it's the natural output bound for a `Joint`'s PID (see
+/// `PidController::with_output_limits`), since anything past it can never
+/// actually reach the motor anyway.
+pub const MAX_VOLTAGE: f64 = 12.0;
 
 /// ODE integrator selection for the motor dynamics.
 ///
