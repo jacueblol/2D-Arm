@@ -5,6 +5,40 @@ successor to the old project's `PROGRESS.md`, which stays on `main` as the
 historical record of the pre-rewrite prototype rather than being carried
 forward as live state.
 
+## M8 — Cartesian moves and choreography (2026-09-22)
+
+**What and why.** This is the strongest demo material in the whole
+project. `arm_core::trajectory::cartesian::CartesianTraj` (constant-speed
+straight-line EE interpolation) and `arm_core::trajectory::choreography`
+(the `WaypointSeq` state machine plus all 9 predefined sequences —
+figure-eight, circle sweep, helix, wave hello, pick-and-place, triangle,
+knock-knock, Zorro, slow drift) are ported wholesale from the old
+prototype, unchanged math. Both are pure `Arm`-level logic with no Bevy
+dependency, so they got real integration test coverage in
+`config_driven.rs` before any key binding existed to trigger them: arrival
+within 25mm after a Cartesian move, straight-line tracking within 10cm
+lateral deviation, and the figure-eight completing within 60 simulated
+seconds — all built from `Config::embedded_default()`.
+
+`Arm::step` now advances the active `CartesianTraj` (if any) and re-solves
+IK at the interpolated waypoint every step using `update_goal()` — not
+`set_setpoint()` — so each joint's trapezoidal profile keeps its velocity
+instead of braking at every tiny waypoint. That's what turns a sequence of
+IK solves into a smooth traced line instead of a jerky arc; it's the same
+`set_setpoint` vs `update_goal` split M3 built for exactly this purpose,
+now actually exercised for the first time.
+
+On the `arm_sim` side: keys 1-9 launch a sequence, `C` cancels, a manual
+WASD jog also cancels whatever's running, and jogging the target now kicks
+off a Cartesian move to it (previously — M7 — it was a plain hard
+retarget). The status overlay shows `[CHOREO: <name>]` while one is
+active.
+
+**What's next.** M9: the egui telemetry and live-tuning panel — the last
+piece before the simulator's physics depth (stiction, encoder noise, RK4)
+becomes something a viewer can actually see and play with, rather than
+config-file-only knobs.
+
 ## M7 — Interactive control (2026-09-22)
 
 **What and why.** The arm is now something you drive, not just watch.

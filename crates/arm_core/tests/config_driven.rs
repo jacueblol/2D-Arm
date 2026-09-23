@@ -115,3 +115,84 @@ fn arm_set_target_unreachable_returns_false() {
     // Shoulder+elbow max reach is 1.8m; this is far outside it.
     assert!(!arm.set_target(DVec3::new(10.0, 10.0, 10.0)));
 }
+
+const ARRIVAL_DIST_M: f64 = 0.025;
+
+#[test]
+fn cartesian_move_ends_within_arrival_threshold() {
+    let target = DVec3::new(1.0, 0.7, 0.3);
+    let mut arm = make_arm_from_config();
+    arm.start_cartesian_move(target, 0.3);
+    for _ in 0..8000 {
+        arm.step(0.005);
+    } // 40 simulated seconds
+    let dist = (arm.ee_pos() - target).length();
+    assert!(
+        dist < ARRIVAL_DIST_M,
+        "EE should be within arrival threshold ({:.0}mm) after Cartesian move, got {:.1}mm",
+        ARRIVAL_DIST_M * 1000.0,
+        dist * 1000.0
+    );
+}
+
+#[test]
+fn cartesian_move_tracks_straight_line() {
+    // Sample intermediate positions during a Cartesian move and check
+    // lateral deviation from the commanded straight line stays small.
+    let start = DVec3::new(0.8, 0.5, 0.0);
+    let end = DVec3::new(1.2, 1.0, 0.3);
+    let mut arm = make_arm_from_config();
+    arm.set_target(start);
+    for _ in 0..4000 {
+        arm.step(0.005);
+    } // settle at start
+
+    arm.start_cartesian_move(end, 0.25);
+
+    let mut max_lateral_err = 0.0f64;
+    let line_dir = (end - start).normalize();
+    for _ in 0..200 {
+        arm.step(0.005);
+        if !arm.is_cartesian_active() {
+            break;
+        }
+        let ee = arm.ee_pos();
+        let to_ee = ee - start;
+        let along = to_ee.dot(line_dir).clamp(0.0, (end - start).length());
+        let proj = start + line_dir * along;
+        let lateral = (ee - proj).length();
+        max_lateral_err = max_lateral_err.max(lateral);
+    }
+    assert!(
+        max_lateral_err < 0.10,
+        "Cartesian path should stay within 10cm of straight line, max deviation: {:.1}mm",
+        max_lateral_err * 1000.0
+    );
+}
+
+#[test]
+fn choreography_figure_eight_advances_waypoints() {
+    use arm_core::trajectory::choreography;
+
+    let mut arm = make_arm_from_config();
+    let mut choreo = choreography::figure_eight(0.25);
+    choreo.start(&mut arm);
+
+    let dt = 0.005;
+    let max_steps = 12_000; // up to 60 simulated seconds
+    for _ in 0..max_steps {
+        arm.step(dt);
+        if choreo.is_done() {
+            break;
+        }
+        let dist = choreo
+            .current_target()
+            .map(|t| (arm.ee_pos() - t).length())
+            .unwrap_or(0.0);
+        choreo.advance(&mut arm, dist, dt);
+    }
+    assert!(
+        choreo.is_done(),
+        "figure-eight should complete within 60 simulated seconds"
+    );
+}
