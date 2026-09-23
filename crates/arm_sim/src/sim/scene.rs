@@ -1,7 +1,8 @@
 use bevy::light::{AmbientLight, DirectionalLight, GlobalAmbientLight};
 use bevy::prelude::*;
 
-use super::resources::{SimState, VisualEntities};
+use super::camera::MainCamera;
+use super::resources::{OrbitCam, SimState, VisualEntities};
 
 const LINK_RADIUS: f32 = 0.04;
 const JOINT_RADIUS: f32 = 0.06;
@@ -35,18 +36,19 @@ fn link_transform(start: Vec3, end: Vec3) -> Transform {
 pub fn setup(
     mut commands: Commands,
     state: Res<SimState>,
+    orbit: Res<OrbitCam>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
-    // Fixed camera — orbit control lands in M7.
     commands.spawn((
         Camera3d::default(),
+        MainCamera,
         AmbientLight {
             color: Color::WHITE,
             brightness: 300.0,
             ..default()
         },
-        Transform::from_xyz(3.2, 2.6, 3.2).looking_at(Vec3::new(0.6, 0.4, 0.2), Vec3::Y),
+        Transform::from_translation(orbit.camera_pos()).looking_at(orbit.focus, Vec3::Y),
     ));
 
     commands.insert_resource(GlobalAmbientLight {
@@ -222,10 +224,12 @@ pub fn update_status(state: Res<SimState>, mut query: Query<&mut Text, With<Stat
     let sho_deg = state.arm.shoulder.angle_rad().to_degrees();
     let elb_deg = state.arm.elbow.angle_rad().to_degrees();
     let ee = state.arm.ee_pos();
+    let paused = if state.paused { "  [PAUSED]" } else { "" };
 
     text.0 = format!(
-        "pan {pan_deg:6.1}°  shoulder {sho_deg:6.1}°  elbow {elb_deg:6.1}°\n\
-         end-effector ({:.3}, {:.3}, {:.3})  target ({:.3}, {:.3}, {:.3})",
+        "pan {pan_deg:6.1}°  shoulder {sho_deg:6.1}°  elbow {elb_deg:6.1}°{paused}\n\
+         end-effector ({:.3}, {:.3}, {:.3})  target ({:.3}, {:.3}, {:.3})\n\
+         WASD/QE move target · Space pause · R reset · drag orbit · scroll zoom",
         ee.x, ee.y, ee.z, state.target.x, state.target.y, state.target.z,
     );
 }

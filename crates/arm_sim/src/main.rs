@@ -39,10 +39,7 @@ fn main() {
             }),
             ..default()
         }))
-        .insert_resource(SimState {
-            arm,
-            target: initial_target,
-        })
+        .insert_resource(SimState::new(arm, initial_target, reached))
         .add_plugins(SimPlugin)
         .run();
 }
