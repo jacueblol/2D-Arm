@@ -135,14 +135,56 @@
 - [x] `JointCfg::build()` constructs fully-configured joint from config section
 - [x] No recompile needed to retune gains or change joint limits
 
+### Milestone 11: Cartesian EE Paths ✅
+- [x] `cartesian_traj.rs` — `CartesianTraj { start, end, total_time, elapsed }` with `advance(dt) -> DVec3` lerp
+- [x] `ArmSim3d::start_cartesian_move(target, speed_m_s)` — samples IK at every sim step so EE traces a straight line
+- [x] `ArmSim3d::is_cartesian_active()` — gates `target_reached` detection until trajectory completes
+- [x] `update_goal()` vs `set_setpoint()` distinction: Cartesian waypoints use `update_goal()` to preserve profile velocity (no stutter at each waypoint)
+- [x] `set_target()` helper in main.rs now always kicks off a Cartesian move; keyboard/socket reset handlers do the same
+- [x] 2 unit tests: `interpolates_and_completes`, `zero_length_immediately_done`
+
+### Milestone 12: Velocity Feedforward + Encoder Noise ✅
+- [x] `Joint3d::with_velocity_ff(kf)` builder — `kF × v_profile` added to PID output each step
+- [x] `EncoderConfig { noise_std_rad, quantization_rad }` in `MotorParams`; wired into `config.toml`
+- [x] `get_position_rad()` applies quantization then Gaussian noise — physics `step()` uses `motor_io.velocity` directly
+- [x] `kf` per-joint in config (pan=0.3, shoulder=0.5, elbow=0.4); encoder noise defaults to 0.0 (can set non-zero to test robustness)
+- [x] Ki bumped to 0.5–0.8 across joints to eliminate ~15mm steady-state EE error
+- [x] 2 unit tests: `perfect_encoder_returns_true_position`, `quantization_rounds_to_steps`
+- [x] All 9 tests pass
+
 ---
 
 ### Long-term vision
 - Full 3D articulated arm simulation → hardware target
 - Real motor controllers, encoders, embedded comms layer (when ready)
 
-### Next candidates (M11+)
-- **Cartesian straight-line paths**: re-run IK at each trajectory step so EE traces a line, not an arc
-- **Velocity feedforward**: add `kF × v_profile` to PID output for smoother trajectory tracking
-- **Encoder simulation**: add noise/quantization to `get_position_rad()` for hardware-realistic testing
+### Milestone 13: Motion Choreography ✅
+- [x] `choreography.rs` — `WaypointSeq` state machine: moves → dwells → moves, using `.take()` to avoid borrow conflicts
+- [x] 9 predefined sequences: figure-8 (Lissajous), circle sweep, helix spiral, wave hello, pick-and-place, triangle, knock-knock, slow drift, Zorro (traces the letter Z)
+- [x] Keys 1–9 to launch sequences; C to cancel; WASD auto-cancels
+- [x] Status overlay shows `[CHOREO: name]` while active; crosshair tracks current waypoint
+
+### Milestone 14: Live PID Gain Tuning ✅
+- [x] `get_gains() -> (kp, ki, kd, kf)` and `set_gains(...)` on `Joint3d` — changes apply without restart
+- [x] `reset_integrator()` to clear wind-up on demand
+- [x] egui panel gets a `[Telemetry | Tuning]` top-level tab row
+- [x] Tuning tab: per-joint kp (0–50), ki (0–10), kd (0–10), kf (0–5) sliders + "Reset Integrator" button
+
+### Milestone 15: Richer Motor Physics ✅
+- [x] Coulomb friction / stiction: torque-projection state machine avoids discrete-time chatter (naive velocity-check chatters badly)
+- [x] `coulomb_static_nm` / `coulomb_kinetic_nm` in `MotorParams` — both default 0.0, behavior unchanged
+- [x] `get_current_amps()` — `I = (V - Kv·ω) / R`; `get_torque_nm()` — `Kt × I`
+- [x] `IntegrationMethod::RK4` opt-in via `use_rk4 = true` in config.toml — O(dt⁴) accuracy for large timesteps
+- [x] All three wired to config.toml; 21 tests pass (was 9)
+
+---
+
+### Long-term vision
+- Full 3D articulated arm simulation → hardware target
+- Real motor controllers, encoders, embedded comms layer (when ready)
+
+### Next candidates (M16+)
 - **Serial/CAN protocol**: define a message format to talk to real motor controllers
+- **Dynamic EE target tracking**: mouse-click in 3D scene to set target (Bevy ray-casting)
+- **Current limiting**: use `get_current_amps()` to clamp voltage before it saturates the motor
+- **Stiction tuning experiment**: set `coulomb_static_nm = 2.0` in config and observe positional dither near setpoint

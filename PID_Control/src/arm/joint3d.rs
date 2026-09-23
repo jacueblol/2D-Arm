@@ -209,3 +209,21 @@ mod tests {
             "goal within limits should not be clamped");
     }
 }
+
+impl Joint3d {
+    pub fn get_gains(&self) -> (f64, f64, f64, f64) {
+        (self.pid.k_p, self.pid.k_i, self.pid.k_d, self.kf)
+    }
+
+    pub fn set_gains(&mut self, kp: f64, ki: f64, kd: f64, kf: f64) {
+        self.pid.k_p = kp;
+        self.pid.k_i = ki;
+        self.pid.k_d = kd;
+        self.kf = kf;
+    }
+
+    pub fn reset_integrator(&mut self) {
+        self.integ_total = 0.0;
+        self.prev_error = 0.0;
+    }
+}

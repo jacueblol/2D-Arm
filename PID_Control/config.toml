@@ -11,14 +11,24 @@ kt_nm_per_amp     = 8.0   # Kt — torque constant (gearbox-multiplied)
 kv_v_per_rads     = 8.0   # Kv — back-EMF constant (caps max joint speed ~1.45 rad/s)
 inertia_kg_m2     = 5.0   # J  — effective inertia with arm load
 damping_nm_s_rad  = 1.0   # b  — gearbox viscous damping
+# Encoder simulation — set non-zero to test control robustness under imperfect sensing
+encoder_noise_std_rad    = 0.0   # Gaussian noise (0.001 ≈ 0.06° realistic jitter)
+encoder_quantization_rad = 0.0   # Resolution (0.00153 = 12-bit encoder, 2π/4096)
+# Coulomb friction / stiction — 0.0 = disabled (default smooth model)
+# Realistic geared arm: static ≈ 2–5 Nm, kinetic ≈ 60-80% of static
+coulomb_static_nm  = 0.0   # Break-away torque (Nm) — motor won't move below this
+coulomb_kinetic_nm = 0.0   # Sliding friction once moving (Nm)
+# Integration — false=Euler (fast, default), true=RK4 (more accurate at large dt)
+use_rk4 = false
 
 [pan]
 # Rotates the whole arm horizontally; no gravity torque on this axis.
 link_length_m   = 0.0
 link_mass_kg    = 0.0
 kp = 8.0
-ki = 0.1
+ki = 0.5
 kd = 0.5
+kf = 0.3
 max_vel_rads    = 1.5
 max_accel_rads2 = 3.0
 min_angle_deg   = -180.0
@@ -28,8 +38,9 @@ max_angle_deg   =  180.0
 link_length_m   = 1.0
 link_mass_kg    = 0.3
 kp = 10.0
-ki = 0.2
+ki = 0.8
 kd = 1.0
+kf = 0.5
 max_vel_rads    = 1.0
 max_accel_rads2 = 2.0
 min_angle_deg   = -30.0
@@ -39,8 +50,9 @@ max_angle_deg   = 135.0
 link_length_m   = 0.8
 link_mass_kg    = 0.15
 kp = 10.0
-ki = 0.2
+ki = 0.8
 kd = 1.0
+kf = 0.4
 max_vel_rads    = 1.2
 max_accel_rads2 = 2.5
 min_angle_deg   = -150.0
