@@ -5,6 +5,40 @@ successor to the old project's `PROGRESS.md`, which stays on `main` as the
 historical record of the pre-rewrite prototype rather than being carried
 forward as live state.
 
+## M5 — Full 3-DOF arm, still headless (2026-09-22)
+
+**What and why.** `arm_core::arm::Arm` (`arm/assembly.rs` — clippy's
+`module_inception` lint rejects a module literally named `arm::arm`)
+orchestrates the three `Joint`s and the `kinematics` module into the
+complete arm: gravity coupling (ported verbatim, same τ_shoulder/τ_elbow
+formulas and sign convention as the old prototype), `set_target` (IK →
+per-joint setpoints), `forward_kinematics`/`ee_pos`. This is the milestone
+the whole headless-first approach was building toward: the control loop
+is fully proven correct — closed-loop IK-to-PID-to-motor convergence,
+against real `config.toml` gains — before a single pixel gets drawn in M6.
+
+`Arm` also makes M4's elbow-up work land somewhere real: it carries an
+`elbow_config: ElbowConfig` (default `Down`, matching old behavior) that
+`set_target` passes into `kinematics::solve_3d`, with
+`with_elbow_config`/`set_elbow_config` to change it — once M6+ exists this
+is a straightforward UI toggle away from being a user-visible feature
+instead of a config-file curiosity.
+
+**Verified, not assumed.** `crates/arm_core/tests/config_driven.rs` grew
+convergence tests for three target poses (forward reach, lateral reach
+against pan + gravity, and the hardest case — high shoulder elevation under
+maximum gravity torque), each settling within 15-20mm of the commanded
+target after 30 simulated seconds, all built from
+`Config::embedded_default()` rather than a hand-duplicated copy of gains —
+closing the drift risk the old `arm3d.rs` test helper had. All passed on
+the first run at the same tolerances the old prototype's tests used,
+confirming the ported gravity coupling and M2's anti-windup bound
+(`±MAX_VOLTAGE` on each joint's PID) didn't change steady-state behavior.
+
+**What's next.** M6: the first pixel. A minimal Bevy app in `arm_sim` — a
+`SimPlugin` wrapping this `Arm` as a resource, meshes positioned from
+`forward_kinematics` each frame, targeting Bevy 0.19 from the start.
+
 ## M4 — Kinematics: forward + inverse (2026-09-22)
 
 **What and why.** `arm_core::kinematics` ports the quaternion-chain forward
