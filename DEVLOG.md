@@ -5,6 +5,57 @@ successor to the old project's `PROGRESS.md`, which stays on `main` as the
 historical record of the pre-rewrite prototype rather than being carried
 forward as live state.
 
+## M9 — egui telemetry and live tuning (2026-09-22)
+
+**What and why.** A dark-themed egui side panel: a Telemetry/Tuning tab
+row, a Pan/Shoulder/Elbow joint tab row, and — on Telemetry — three live
+time-series plots (angle vs. setpoint, error, velocity) built from a
+`PlotHistory` ring buffer pushed every unpaused frame; on Tuning, live
+kp/ki/kd/kf sliders wired straight to `Joint::set_gains` plus a "Reset
+Integrator" button, so gain changes and their effect on the plots are
+visible in the same session, no restart. Target position is also
+drag-editable (X/Y/Z), routed through the same `SimState::set_target` the
+keyboard jog uses, so it starts a Cartesian move like everything else.
+
+**A third, more substantial Bevy-ecosystem API break** — this time in
+`bevy_egui` 0.42 / `egui` 0.36 rather than Bevy itself, and structural
+rather than a rename:
+- egui UI systems now run in a dedicated `EguiPrimaryContextPass` schedule,
+  not `Update` — reading a live `EguiContexts` outside it doesn't work.
+- `EguiContexts::try_ctx_mut() -> Option<&mut Context>` is gone; the
+  replacement, `ctx_mut() -> Result<&mut Context, QuerySingleError>`, pairs
+  with Bevy's fallible-system support (`fn draw_panel(...) -> Result`,
+  using `?`).
+- `egui::SidePanel` (and `TopBottomPanel`) no longer exist — egui unified
+  them into one `Panel` type whose `left()`/`right()`/`top()`/`bottom()`
+  constructors now draw *into* an existing `Ui` rather than straight onto
+  the `Context`. Reproducing the old one-call `SidePanel::show(ctx, |ui|
+  ...)` behavior needs a full-screen background `Ui` built from
+  `ctx.viewport_rect()` first (`egui::Ui::new(ctx.clone(), id,
+  UiBuilder::new().layer_id(LayerId::background()).max_rect(...))`), a
+  small but real structural change, not just a find-and-replace. Found by
+  reading `bevy_egui`'s own bundled `examples/side_panel.rs` and
+  `examples/simple.rs` in the downloaded crate source after the compiler
+  rejected the old call shape outright — the same "verify against real
+  source, not memory" discipline as M6's Bevy-proper breaks.
+- `egui_plot::Line::new` now takes the series name as its first argument
+  instead of a separate `.name()` builder call.
+
+**Verified by actually running it**: launched the binary, screenshotted the
+panel — the Telemetry tab renders exactly as intended, live: angle curve
+visibly converging toward the setpoint line, error and velocity curves
+both decaying cleanly toward zero, tab switching UI present and styled
+dark. Didn't get a screenshot of the Tuning tab specifically (switching
+tabs needs a mouse click, which isn't reliably automatable in this
+sandbox — see M7's note), but it renders through the identical, already-
+proven `Panel`/`Ui` pipeline as Telemetry, just with sliders instead of
+plots.
+
+**What's next.** M10: surface the physics depth that's been sitting in
+`arm_core` since M1 but never been demonstrable — encoder noise, Coulomb
+stiction, the RK4 toggle — as config/UI-exposed, visible experiments
+rather than config-file curiosities. Then M11: polish and docs close-out.
+
 ## M8 — Cartesian moves and choreography (2026-09-22)
 
 **What and why.** This is the strongest demo material in the whole
