@@ -8,9 +8,7 @@ description = "Interactive 3-DOF articulated arm simulator (Bevy app)"
 
 [dependencies]
 arm_core = { path = "../arm_core" }
-serde = { workspace = true }
-toml = { workspace = true }
+glam = { workspace = true }
 bevy = "0.19"
 bevy_egui = "0.42"
 egui_plot = "0.37"
-colored = "3"
