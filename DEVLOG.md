@@ -5,6 +5,43 @@ successor to the old project's `PROGRESS.md`, which stays on `main` as the
 historical record of the pre-rewrite prototype rather than being carried
 forward as live state.
 
+## M2 — PID with anti-windup (2026-09-22)
+
+**What and why.** The old `PidController` was the simplest possible PID: no
+output clamp, no anti-windup. That was fine as long as the loop never
+saturated for long — but a real actuator has limits (the motor's voltage
+clamps at ±12V), and any PID whose integral term keeps accumulating while
+the output is already pinned at that limit will "wind up": the integral
+grows far past what's actually needed, and once the error finally reverses,
+the controller keeps driving the output at the limit for a long stretch
+purely to unwind the excess integral — a classic, well-documented control
+bug, and the excuse for making this its own milestone rather than folding it
+quietly into the joint work in M3.
+
+`arm_core::pid::PidController` now takes optional `output_min`/`output_max`
+bounds (`with_output_limits`; unbounded by default, so old-style unbounded
+behavior is still available for anywhere it's wanted) and implements
+**clamping anti-windup via conditional integration**: once the output has
+saturated in a direction, further error pushing the same way is not
+integrated, so the integral term never grows past what's needed to hold the
+output at its limit. Error that reverses and would pull the output back out
+of saturation is still integrated immediately — recovery isn't delayed.
+
+**The regression case.** `anti_windup_bounds_integrator_under_sustained_saturation`
+drives a controller with `kp=0.05, ki=1.0` under a sustained error of 100 for
+10 seconds simulated (1000 steps at 10ms). An unbounded controller's
+integral term grows to >500 over that run — genuinely unbounded, it would
+keep climbing forever. The same controller with `with_output_limits(-12, 12)`
+stays under 20: it climbs only until the output hits the limit (around
+integ≈7, matching the arithmetic: `kp*error + integ = 12` → `integ = 12 -
+0.05*100 = 7`), then freezes. A second test confirms that once saturated,
+an error reversal still reduces the integrator immediately rather than
+staying artificially frozen.
+
+**What's next.** M3: `Joint` — wires a motor + PID + trapezoidal profile +
+limits together, config-driven, tested against the real `config.toml`
+instead of hand-duplicated values.
+
 ## M1 — Motor physics core (2026-09-22)
 
 **What and why.** Ported the motor physics from the old prototype into
