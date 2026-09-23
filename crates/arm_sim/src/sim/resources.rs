@@ -1,10 +1,15 @@
 use std::collections::VecDeque;
 
 use arm_core::arm::Arm;
+use arm_core::trajectory::WaypointSeq;
 use bevy::prelude::*;
 use glam::DVec3;
 
 pub const TRAIL_LEN: usize = 400;
+
+/// EE linear speed for Cartesian moves triggered by jogging the target or
+/// launching a choreography sequence.
+pub const CARTESIAN_SPEED: f64 = 0.3;
 
 #[derive(Resource)]
 pub struct SimState {
@@ -13,6 +18,7 @@ pub struct SimState {
     pub ik_valid: bool,
     pub paused: bool,
     pub ee_trail: VecDeque<Vec3>,
+    pub active_choreo: Option<WaypointSeq>,
 }
 
 impl SimState {
@@ -23,15 +29,18 @@ impl SimState {
             ik_valid,
             paused: false,
             ee_trail: VecDeque::new(),
+            active_choreo: None,
         }
     }
 
-    /// Attempt to retarget the arm. On success, updates `target` and clears
-    /// the trail (a fresh move shouldn't show the old approach path). On
-    /// failure (target outside the reachable workspace), leaves `target`
-    /// where it was — jogging past the workspace boundary just stops.
+    /// Attempt to retarget the arm via a straight-line Cartesian move. On
+    /// success, updates `target` and clears the trail (a fresh move
+    /// shouldn't show the old approach path). On failure (target outside
+    /// the reachable workspace), leaves `target` where it was — jogging
+    /// past the workspace boundary just stops.
     pub fn set_target(&mut self, new_target: DVec3) {
         if self.arm.set_target(new_target) {
+            self.arm.start_cartesian_move(new_target, CARTESIAN_SPEED);
             self.target = new_target;
             self.ik_valid = true;
             self.ee_trail.clear();

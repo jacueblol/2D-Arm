@@ -18,6 +18,7 @@ impl Plugin for SimPlugin {
                     handle_keyboard,
                     handle_camera,
                     step_sim,
+                    run_choreography,
                     update_visuals,
                     draw_gizmos,
                     update_status,
@@ -42,5 +43,31 @@ fn step_sim(mut state: ResMut<SimState>, time: Res<Time>) {
     state.ee_trail.push_back(ee);
     if state.ee_trail.len() > TRAIL_LEN {
         state.ee_trail.pop_front();
+    }
+}
+
+fn run_choreography(mut state: ResMut<SimState>, time: Res<Time>) {
+    if state.paused || state.active_choreo.is_none() {
+        return;
+    }
+    let dt = time.delta_secs_f64().min(0.05);
+    let dist = {
+        let state = &*state;
+        state
+            .active_choreo
+            .as_ref()
+            .and_then(|c| c.current_target())
+            .map(|t| (state.arm.ee_pos() - t).length())
+            .unwrap_or(0.0)
+    };
+
+    let SimState {
+        arm, active_choreo, ..
+    } = &mut *state;
+    if let Some(choreo) = active_choreo {
+        choreo.advance(arm, dist, dt);
+        if choreo.is_done() {
+            *active_choreo = None;
+        }
     }
 }

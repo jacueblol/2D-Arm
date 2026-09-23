@@ -225,11 +225,15 @@ pub fn update_status(state: Res<SimState>, mut query: Query<&mut Text, With<Stat
     let elb_deg = state.arm.elbow.angle_rad().to_degrees();
     let ee = state.arm.ee_pos();
     let paused = if state.paused { "  [PAUSED]" } else { "" };
+    let choreo = match &state.active_choreo {
+        Some(c) => format!("  [CHOREO: {}]", c.label),
+        None => String::new(),
+    };
 
     text.0 = format!(
-        "pan {pan_deg:6.1}°  shoulder {sho_deg:6.1}°  elbow {elb_deg:6.1}°{paused}\n\
+        "pan {pan_deg:6.1}°  shoulder {sho_deg:6.1}°  elbow {elb_deg:6.1}°{paused}{choreo}\n\
          end-effector ({:.3}, {:.3}, {:.3})  target ({:.3}, {:.3}, {:.3})\n\
-         WASD/QE move target · Space pause · R reset · drag orbit · scroll zoom",
+         WASD/QE move target · 1-9 choreography · C cancel · Space pause · R reset · drag orbit · scroll zoom",
         ee.x, ee.y, ee.z, state.target.x, state.target.y, state.target.z,
     );
 }
