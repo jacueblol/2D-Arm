@@ -4,5 +4,8 @@
 //! type here must be testable and usable headlessly. `arm_sim` is the only
 //! crate that wires this into a Bevy app.
 
+pub mod arm;
+pub mod config;
 pub mod motor;
 pub mod pid;
+pub mod trajectory;
