@@ -5,3 +5,4 @@
 //! crate that wires this into a Bevy app.
 
 pub mod motor;
+pub mod pid;
