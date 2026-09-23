@@ -5,6 +5,44 @@ successor to the old project's `PROGRESS.md`, which stays on `main` as the
 historical record of the pre-rewrite prototype rather than being carried
 forward as live state.
 
+## M1 — Motor physics core (2026-09-22)
+
+**What and why.** Ported the motor physics from the old prototype into
+`arm_core::motor`, headless — no Bevy in sight, `cargo test -p arm_core`
+finishes in well under a second even though the DC-motor ODE, RK4
+integration, and the Coulomb stiction state machine are all exercised by the
+same 14 tests the old code had. Getting this right first matters: everything
+downstream (PID, joints, the whole arm) sits on top of this.
+
+Rather than one 700-line file, split by concern:
+- `motor/sim.rs` — the ODE itself (`dω/dt = (Kt·I − b·ω − τ_load − τ_friction)/J`),
+  Euler and RK4 integration, current/torque observers, gravity feedforward.
+- `motor/friction.rs` — `Stiction`, the Coulomb static/kinetic friction
+  state machine, as a self-contained type that only knows about torques and
+  velocity (not R/Kt/Kv) — `sim.rs` computes the friction-free net torque and
+  hands it to `Stiction::resolve`. This is a real improvement over the old
+  code, where the stiction logic and the electrical model were interleaved
+  in one method: the state machine can now be reasoned about (and tested)
+  independently of the motor's electrical parameters.
+- `motor/encoder.rs` — quantization-then-noise, read-side only, unchanged
+  in behavior from the old code.
+
+The `MotorFn` trait and `MotorIO` wrapper from the old code are gone: `MotorFn`
+was never actually used polymorphically anywhere in the old codebase (checked
+before dropping it), and `MotorIO` only existed to bundle position/velocity/
+voltage with a logger — now that the logger is cut (see M0), those three
+fields just live directly on `MotorSim`.
+
+**Verified, not assumed.** All 14 ported tests pass with the same tolerances
+as before — encoder quantization/noise, stiction breakaway/re-latch/
+zero-friction-equivalence, current/torque estimation at stall and under
+back-EMF, and both RK4 convergence properties (matches Euler at steady
+state; more accurate than Euler at large dt against a fine-grained
+reference). `cargo clippy -p arm_core --all-targets -- -D warnings` is clean.
+
+**What's next.** M2: `PidController` with anti-windup and output clamping
+added deliberately (the old controller had neither).
+
 ## M0 — Rewrite kickoff and scaffolding (2026-09-22)
 
 **What and why.** Starting a full rewrite of the arm simulator for my
