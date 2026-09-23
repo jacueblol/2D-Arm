@@ -5,6 +5,51 @@ successor to the old project's `PROGRESS.md`, which stays on `main` as the
 historical record of the pre-rewrite prototype rather than being carried
 forward as live state.
 
+## M6 — First pixel: Bevy visualization MVP (2026-09-22)
+
+**What and why.** `arm_sim` finally does something: a real window, a real
+arm. `SimPlugin` wraps `arm_core::arm::Arm` in a `SimState` resource;
+`scene::setup` spawns a fixed camera, lighting, ground, and meshes for the
+two links, elbow joint, end-effector, and target; `scene::update_visuals`
+repositions everything from `forward_kinematics()` every frame;
+`scene::update_status` shows a minimal text overlay (joint angles, EE and
+target position). No camera control, no keyboard/mouse input, no egui yet —
+those are M7 and M9. This is deliberately the smallest possible "it's
+alive" milestone.
+
+**Porting across four Bevy major versions surfaced real API breaks**,
+checked against the actual downloaded Bevy 0.19.1 source in the local
+cargo registry cache rather than assumed from the old (Bevy 0.15) code:
+- `AmbientLight` is no longer a `Resource` — it's now a `Component` you
+  attach to a camera (to override the scene default), with a new
+  `GlobalAmbientLight` resource for the scene-wide default. Missing this
+  distinction would've been a silent behavior change, not a compile error —
+  `insert_resource(AmbientLight {...})` no longer exists to fail loudly, so
+  it had to be caught by reading the type definitions, not by the compiler.
+- `Cylinder::new(radius, height)` now takes **full** height and halves it
+  internally — the old code passed a pre-halved length (`link_length / 2.0`),
+  which would have silently rendered every link at half its real length.
+  Caught by reading `Cylinder::new`'s source, not by a compiler error.
+- `DirectionalLight.shadows_enabled` was renamed `shadow_maps_enabled`.
+- `TextFont.font_size` changed from `f32` to a `FontSize` enum
+  (`FontSize::Px(13.0)` for the old pixel-size behavior).
+- `WindowResolution` now has an unambiguous `::new(u32, u32)` — the old
+  `(1280.0, 960.0).into()` triggered an f32-vs-other-numeric-type
+  ambiguity warning that's absent here from the start.
+
+**Verified by actually running it**, not just `cargo check`: built the
+binary, launched it against the real Wayland session, confirmed the window
+opens (`Articulated Arm Simulator`, via `hyprctl clients`), and captured a
+screenshot with `grim`. It shows the arm converging toward the configured
+initial target (`end-effector (1.152, 0.818, 0.404)` approaching
+`target (1.200, 0.800, 0.400)`), correctly colored links/joints, and the
+status overlay rendering live angle/position text. Startup log is clean —
+no warnings, no panics; Vulkan (`radv`) backend, GPU clustering and
+preprocessing both report supported.
+
+**What's next.** M7: orbit camera, WASD/QE target jog, EE trail, workspace
+gizmo — the first genuinely interactive milestone.
+
 ## M5 — Full 3-DOF arm, still headless (2026-09-22)
 
 **What and why.** `arm_core::arm::Arm` (`arm/assembly.rs` — clippy's
