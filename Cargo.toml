@@ -1,0 +1,15 @@
+[workspace]
+resolver = "2"
+members = ["crates/arm_core", "crates/arm_sim"]
+
+[workspace.package]
+edition = "2024"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/jacueblol/articulated-arm"
+
+[workspace.dependencies]
+glam = "0.32"
+serde = { version = "1", features = ["derive"] }
+toml = "1"
+rand = "0.10"
+rand_distr = "0.6"

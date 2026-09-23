@@ -1,70 +1,33 @@
-# 2D-Arm
+# Articulated Arm Simulator
 
-A basic simulation framework for a 2D articulated arm.
+A 3-DOF (pan/shoulder/elbow) robotic arm simulator in Rust: closed-form inverse
+kinematics, PID control with gravity and velocity feedforward, realistic motor
+physics (Coulomb stiction, RK4 integration, encoder noise), trapezoidal
+trajectory planning, and an interactive 3D Bevy visualization with a live
+telemetry/tuning UI.
 
-## Overview
+This is a from-scratch rewrite of an earlier prototype, done for the author's
+portfolio. The rewrite is in progress — see [`DEVLOG.md`](DEVLOG.md) for the
+running development narrative and [`docs/architecture.md`](docs/architecture.md)
+for the technical design once it lands.
 
-This project provides a simple simulation groundwork for modeling a 2D articulated arm with multiple links. The simulation framework allows you to create chains of links and step through time to observe their behavior.
+> **Status**: early scaffolding (M0). Not yet runnable end-to-end — check
+> `DEVLOG.md` for current progress.
 
-## Structure
-
-- **Vector2D.h**: 2D vector math utilities for position and direction calculations
-- **Link2D.h**: Represents a single link in the articulated arm
-- **Simulation.h**: Main simulation framework that manages multiple links and time stepping
-- **main.cpp**: Example usage showing how to create and run a simulation
-
-## Building
-
-This project uses CMake for building:
-
-```bash
-mkdir build
-cd build
-cmake ..
-make
-```
-
-## Running
-
-After building, run the simulation:
+## Quickstart
 
 ```bash
-./bin/arm_simulation
+cargo run -p arm_sim
 ```
 
-## Usage Example
+## Workspace layout
 
-```cpp
-#include "Simulation.h"
+- `crates/arm_core` — physics, control, and kinematics. No Bevy dependency;
+  fully testable headlessly (`cargo test -p arm_core`).
+- `crates/arm_sim` — the interactive Bevy application: rendering, input,
+  egui telemetry/tuning panels.
 
-int main() {
-    // Create simulation with 0.01s time step
-    Simulation sim(0.01);
-    
-    // Add links to create a 2-link arm
-    sim.addLink(1.0, 0.0);  // length 1.0, angle 0.0 rad
-    sim.addLink(0.8, 0.0);  // length 0.8, angle 0.0 rad
-    
-    // Step through simulation
-    for (int i = 0; i < 100; ++i) {
-        sim.step();
-    }
-    
-    // Print current state
-    sim.printState();
-    
-    return 0;
-}
-```
+## License
 
-## Features
-
-- Simple 2D vector mathematics
-- Link-based arm structure with position and angle tracking
-- Time-stepped simulation
-- Chain connectivity (each link connects to the previous one)
-- State inspection and printing
-
-## Note
-
-This is a basic simulation framework. No control logic is implemented - it provides only the groundwork for simulating a 2D articulated arm.
+Dual-licensed under [MIT](LICENSE-MIT) or [Apache-2.0](LICENSE-APACHE) at your
+option.
