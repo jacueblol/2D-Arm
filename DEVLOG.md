@@ -5,6 +5,55 @@ successor to the old project's `PROGRESS.md`, which stays on `main` as the
 historical record of the pre-rewrite prototype rather than being carried
 forward as live state.
 
+## M7 — Interactive control (2026-09-22)
+
+**What and why.** The arm is now something you drive, not just watch.
+Ported from the old prototype: an orbit camera (`OrbitCam` resource,
+left-drag to orbit, scroll to zoom), WASD/QE keyboard target jogging,
+Space to pause, R to reset, an EE trail that fades in from its oldest
+point, a translucent workspace-reachability sphere, and a target crosshair
+that turns gray when jogged past the reachable boundary. Split across new
+`sim/camera.rs`, `sim/input.rs`, and `sim/gizmos.rs` modules rather than
+piling into `scene.rs`.
+
+No Cartesian interpolation yet (that's M8) — jogging the target just calls
+`Arm::set_target` every frame it moves, which hard-retargets each joint's
+trapezoidal profile from its current position and velocity each time. At
+60 fps with small per-frame deltas this reads as smooth continuous
+tracking in practice; the visibly bounded, non-instant motion **is** the
+trapezoidal profile at work, which is the whole point of this milestone's
+"visible ramp" goal — no special-casing needed, it falls out of M3's
+`Joint` doing its job.
+
+**A second Bevy 0.19 API break**, again caught by the compiler rather than
+assumed: mouse motion/wheel events are read via `MessageReader`, not
+`EventReader` — Bevy renamed its event system to "messages" between 0.15
+and 0.19 (`MouseMotion`/`MouseWheel` now derive `Message`, not `Event`).
+
+**Verification, and where it fell short.** Built and ran the binary
+against the real Wayland session again; confirmed clean startup, correct
+rendering of the new gizmos (EE trail, target crosshair, floor grid all
+visible in a screenshot), and — importantly — got at least one clear
+positive signal that input really reaches the app: a `Space` keystroke
+sent via `wtype` did toggle `SimState.paused` (visible in the status
+overlay), proving the `ButtonInput` pipeline is wired correctly end to
+end. What I could *not* cleanly verify automated: individual WASD taps
+in isolation. `wtype`'s virtual-keyboard events appear to queue at the
+Wayland seat level somewhat independently of which window nominally has
+focus, and this sandbox has no pointer-click tool (`ydotool`/`wlrctl`
+aren't installed) to force genuine focus the way a real click would — so
+repeated single-key tests kept landing with unpredictable delay or not
+at all, rather than reproducing cleanly. This is a testing-environment
+gap, not a code-confidence gap: the logic is a faithful port of
+previously-verified behavior, it type-checks against the real APIs, and
+the one clean signal I did get (pause) confirms the wiring works. Noting
+this explicitly rather than overclaiming a full interactive pass — worth
+a manual `cargo run -p arm_sim` check with a real keyboard/mouse.
+
+**What's next.** M8: Cartesian moves (`CartesianTraj`, straight-line EE
+interpolation) and the 9 choreography sequences — the strongest demo
+material in the whole project.
+
 ## M6 — First pixel: Bevy visualization MVP (2026-09-22)
 
 **What and why.** `arm_sim` finally does something: a real window, a real

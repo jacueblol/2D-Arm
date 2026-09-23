@@ -1,22 +1,46 @@
 use bevy::prelude::*;
 
-use super::resources::SimState;
+use super::camera::handle_camera;
+use super::gizmos::draw_gizmos;
+use super::input::handle_keyboard;
+use super::resources::{OrbitCam, SimState, TRAIL_LEN};
 use super::scene::{setup, update_status, update_visuals};
 
 pub struct SimPlugin;
 
 impl Plugin for SimPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Startup, setup)
-            .add_systems(Update, (step_sim, update_visuals, update_status).chain());
+        app.init_resource::<OrbitCam>()
+            .add_systems(Startup, setup)
+            .add_systems(
+                Update,
+                (
+                    handle_keyboard,
+                    handle_camera,
+                    step_sim,
+                    update_visuals,
+                    draw_gizmos,
+                    update_status,
+                )
+                    .chain(),
+            );
     }
 }
 
 fn step_sim(mut state: ResMut<SimState>, time: Res<Time>) {
+    if state.paused {
+        return;
+    }
     // Clamp dt so a debugger pause or a slow frame doesn't blow up the
     // integrator with a huge single step.
     let dt = time.delta_secs_f64().min(0.05);
     if dt > 0.0 {
         state.arm.step(dt);
+    }
+
+    let ee = state.arm.ee_pos().as_vec3();
+    state.ee_trail.push_back(ee);
+    if state.ee_trail.len() > TRAIL_LEN {
+        state.ee_trail.pop_front();
     }
 }
