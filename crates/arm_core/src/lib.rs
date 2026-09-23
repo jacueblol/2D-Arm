@@ -6,6 +6,7 @@
 
 pub mod arm;
 pub mod config;
+pub mod kinematics;
 pub mod motor;
 pub mod pid;
 pub mod trajectory;

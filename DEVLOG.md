@@ -5,6 +5,39 @@ successor to the old project's `PROGRESS.md`, which stays on `main` as the
 historical record of the pre-rewrite prototype rather than being carried
 forward as live state.
 
+## M4 — Kinematics: forward + inverse (2026-09-22)
+
+**What and why.** `arm_core::kinematics` ports the quaternion-chain forward
+kinematics and the closed-form 2-link inverse kinematics from the old
+prototype — both pure math, no `Joint`/`Arm` orchestration, which is why
+they're a separate module from `arm::joint` rather than living inside it.
+
+The headline change from the old code: the elbow-up solution is no longer
+dead. The IK math has always computed both `elbow_pos` (bends upward) and
+`elbow_neg` (bends downward) — the old code just always threw `elbow_pos`
+away (`#[allow(dead_code)]` on the whole struct). `ElbowConfig` is now a
+real, small enum (`Down` default — unchanged behavior — or `Up`), and
+`IkSolutions::pick(config)` selects between them. `solve_3d(l1, l2, target,
+elbow)` is the same pan-plus-planar decomposition as before, now taking that
+choice as a parameter instead of hardcoding `elbow_neg`.
+
+**Proven, not just ported.** The milestone plan called for "FK∘IK
+round-trip property tests across sampled reachable workspace" — that's
+`planar_fk_ik_round_trip_both_elbow_configs` (12 points around the annulus,
+both elbow configs) and `solve_3d_fk_ik_round_trip` (4 targets through the
+full pan+planar dispatch, both configs): solve IK for a target, feed the
+result through forward kinematics, and check it reproduces the original
+target to within 1e-9 — including for the elbow-up branch, which had never
+been exercised by anything in the old codebase since nothing ever selected
+it.
+
+**What's next.** M5: `Arm` — pan+shoulder+elbow orchestration on top of
+`Joint` and `kinematics`, gravity coupling, still fully headless. This is
+where "control is proven correct before a single pixel is drawn" actually
+lands — full closed-loop convergence tests against real config values,
+matching the old `arm3d.rs` convergence tests but against `Config` instead
+of hand-duplicated gains.
+
 ## M3 — Joint, config-driven (2026-09-22)
 
 **What and why.** `arm_core::arm::Joint` wires a motor, a PID controller, a
